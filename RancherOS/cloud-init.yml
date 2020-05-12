@@ -1,0 +1,61 @@
+#cloud-config
+#
+# This config allows you to set
+# hostname
+# static ip
+# custom console
+# login to private docker repository
+# adds ssh keys for remote access
+# allows yo run docker commands on startup
+# adds custom CA certs
+
+hostname: RancherOS # your hostname
+
+# ca-certs:
+#   trusted:
+#   - |
+#     -----BEGIN CERTIFICATE-----
+#     your CA certificate - not yet supported by RancherOS https://github.com/rancher/os/issues/1795
+#     -----END CERTIFICATE-----
+
+rancher:
+  # resize_device: /dev/sda
+  network:
+    interfaces:
+      eth*:
+        dhcp: false
+      eth0:
+        address: 192.168.0.2/24 # your static ip
+        gateway: 192.168.0.1 # your gateway
+    dns:
+      nameservers:
+        - 1.1.1.1 # yout DNS server
+  console: debian # rancherOS console, I changed mine from default alpine due to it's limitations
+  registry_auths:
+    registry.docker.local: # private docker repo url
+      username: username
+      password: pass
+
+ssh_authorized_keys:
+  - ssh-rsa SSH key
+write_files:
+  - path: /etc/rc.local # allows yo run docker commands on startup, like joining swarm
+    permissions: "0755"
+    owner: root
+    content: |
+      #!/bin/bash
+      wait-for-docker
+      docker run hello-world
+  - content: |+
+      #!/bin/sh
+      cat << _EOF_ >> /etc/ssl/certs/ca-certificates.crt
+      # .local root CA
+      -----BEGIN CERTIFICATE-----
+      current way of adding CA certs
+      -----END CERTIFICATE-----
+      _EOF_
+    owner: root:root
+    path: /opt/rancher/bin/start.sh
+    permissions: "0755"
+
+
